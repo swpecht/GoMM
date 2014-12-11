@@ -203,12 +203,18 @@ func TestClient_UpdateActiveMembers(t *testing.T) {
 
 }
 
-func TestClient_Broadcast(t *testing.T) {
-	assert := assert.New(t)
+// Get a data only client with an attached messenger, and the
+// channel that all sent messages will go to.
+func getMessagingClient(t *testing.T) (*Client, chan Message) {
 	c := GetClient_DataOnly(t)
-
 	messenger, sent := NewMockMessenger()
 	c.messenger = messenger
+	return c, sent
+}
+
+func TestClient_Broadcast(t *testing.T) {
+	assert := assert.New(t)
+	c, sent := getMessagingClient(t)
 	activeNodes := []Node{GetNode(t), GetNode(t), c.node}
 	c.updateActiveMemberList(activeNodes)
 
@@ -223,4 +229,60 @@ func TestClient_Broadcast(t *testing.T) {
 		assert.Equal(stringData, msg.StringData)
 		assert.Equal(floatData, msg.FloatData)
 	}
+}
+
+// func TestClient_Send(t *testing.T) {
+// 	assert := assert.New(t)
+// 	c, sent := getMessagingClient(t)
+// 	activeNodes := []Node{GetNode(t), GetNode(t), c.node}
+// 	c.updateActiveMemberList(activeNodes)
+
+// 	stringData := []string{"Sending test"}
+// 	floatData := []float64{2.0, 48182.2}
+
+// 	go c.Send(stringData, floatData, 0)
+// 	msg := <-sent
+// 	id, _ := c.ResolveId(0)
+// 	assert.Equal(msg.Target, id)
+// 	assert.Equal(stringData, msg.StringData)
+// 	assert.Equal(floatData, msg.FloatData)
+
+// 	go c.Send(stringData, floatData, 1)
+// 	msg = <-sent
+// 	id, _ = c.ResolveId(1)
+// 	assert.Equal(msg.Target, id)
+// 	assert.Equal(stringData, msg.StringData)
+// 	assert.Equal(floatData, msg.FloatData)
+
+// 	t.Error("Not implemented")
+// }
+
+func TestClient_ResolveId(t *testing.T) {
+	assert := assert.New(t)
+	// Reset node num to avoidd previous test interfecernce
+	nodeNumLock.Lock()
+	nodeNum = 0
+	nodeNumLock.Unlock()
+
+	c := GetClient_DataOnly(t)
+	activeNodes := []Node{GetNode(t), GetNode(t), c.node}
+	c.updateActiveMemberList(activeNodes)
+
+	node0, err := c.ResolveId(0)
+	assert.Equal(activeNodes[0].GetStringAddr(), node0)
+	assert.Nil(err)
+
+	node1, err := c.ResolveId(1)
+	assert.Equal(activeNodes[1].GetStringAddr(), node1)
+	assert.Nil(err)
+
+	node2, err := c.ResolveId(2)
+	assert.Equal(activeNodes[2].GetStringAddr(), node2)
+	assert.Nil(err)
+
+	_, err = c.ResolveId(3)
+	if err == nil {
+		t.Error("Failed to handle id out of bounds")
+	}
+
 }

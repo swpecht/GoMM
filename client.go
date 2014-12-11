@@ -1,8 +1,10 @@
 package GoMM
 
 import (
+	"errors"
 	"github.com/hashicorp/memberlist"
 	"log"
+	"sort"
 	"strconv"
 	"sync"
 	"time"
@@ -196,6 +198,42 @@ PollingLoop:
 func (c *Client) Broadcast(stringData []string, floatData []float64) {
 	msg := CreateBroadcastMsg(stringData, floatData)
 	c.broadCastMsg(msg)
+	// Need to implement a less naive broadcast using a tree structure
+	// Will involvde adding a broadcast handler to echo the messageType
+	// The most difficult part will be determining who to send to
+
+	// Make broadcast off of ids - make a send message function that
+	// sends to a given id
+}
+
+// Sends a message to a node with the supplied id
+func (c *Client) Send(stringData []string, floatData []float64, target int) {
+
+}
+
+// Resolve the id to a client address. The id is currently based on
+// the sorted string order of the nodes address.
+func (c *Client) ResolveId(id int) (string, error) {
+	c.ActiveMembersLock.Lock()
+	defer c.ActiveMembersLock.Unlock()
+
+	// Check valid id
+	if id < 0 || id > len(c.ActiveMembers)-1 {
+		return "", errors.New("Id out of bounds")
+	}
+
+	// Generate a list of addresses
+	memberAddresses := make([]string, len(c.ActiveMembers))
+	i := 0
+	for _, v := range c.ActiveMembers {
+		addr := v.GetTCPAddr()
+		memberAddresses[i] = addr.String()
+		i++
+	}
+
+	sort.Strings(memberAddresses)
+
+	return memberAddresses[id], nil
 }
 
 func (c *Client) broadCastMsg(msg Message) {
