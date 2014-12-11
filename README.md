@@ -1,4 +1,4 @@
-https://travis-ci.org/swpecht/GoMM.svg
+![build status](https://travis-ci.org/swpecht/GoMM.svg)
 
 GoMM
 ====
