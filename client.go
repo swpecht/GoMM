@@ -212,7 +212,6 @@ func (c *Client) sendMsg(msg Message, targetId int) error {
 	if err != nil {
 		return err
 	}
-
 	msg.Target = target
 	err = c.messenger.Send(msg)
 
@@ -246,17 +245,16 @@ func (c *Client) ResolveId(id int) (string, error) {
 
 func (c *Client) broadCastMsg(msg Message) {
 	c.ActiveMembersLock.Lock()
-	log.Println("[DEBUG] Broadcasting message to", len(c.ActiveMembers), "nodes")
-	for _, node := range c.ActiveMembers {
-		tcpAddr := node.GetTCPAddr()
-		msg.Target = tcpAddr.String()
+	numMembers := len(c.ActiveMembers)
+	c.ActiveMembersLock.Unlock()
 
-		err := c.messenger.Send(msg)
+	log.Println("[DEBUG] Broadcasting message to", numMembers, "nodes")
+	for i := 0; i < numMembers; i++ {
+		err := c.sendMsg(msg, i)
 		if err != nil {
-			log.Println("[ERROR] Failed to broadcast message to ", tcpAddr.String())
+			log.Println("[ERROR] Failed to broadcast message to node", i)
 		}
 	}
-	c.ActiveMembersLock.Unlock()
 
 }
 

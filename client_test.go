@@ -89,19 +89,17 @@ func TestClient_IsActive(t *testing.T) {
 
 func TestClient_Barrier(t *testing.T) {
 	assert := assert.New(t)
-	timer := time.AfterFunc(500*time.Millisecond, func() {
+	timer := time.AfterFunc(1000*time.Millisecond, func() {
 		panic("Hung during barrier test!")
 	})
 	defer timer.Stop()
 
-	c := GetClient_DataOnly(t)
+	c, sent := getMessagingClient(t)
 
 	// Test single Client case, only active node, should return immediately
 	c.Barrier()
 
 	// Test with multiple active nodes
-	messenger, sent := NewMockMessenger()
-	c.messenger = messenger
 	activeNodes := []Node{GetNode(t), GetNode(t), c.node}
 	c.updateActiveMemberList(activeNodes)
 
