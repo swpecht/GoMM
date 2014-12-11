@@ -16,8 +16,8 @@ type ClientFactory struct {
 	num_created int
 }
 
-func (f *ClientFactory) NewClient() (c client) {
-	c = client{}
+func (f *ClientFactory) NewClient() (c Client) {
+	c = Client{}
 	f.initializeData(&c)
 
 	f.num_created += 1
@@ -25,11 +25,12 @@ func (f *ClientFactory) NewClient() (c client) {
 	return
 }
 
-func (f *ClientFactory) initializeData(c *client) error {
+func (f *ClientFactory) initializeData(c *Client) error {
 	// Initialize variables
 	c.ActiveMembers = make(map[string]Node)
 	c.pendingMembers = make(map[string]Node)
 	c.barrierChannel = make(chan string)
+	c.BroadcastChannel = make(chan Message, 10)
 
 	var config *memberlist.Config = memberlist.DefaultLocalConfig()
 	c.Name = config.Name + ":" + strconv.Itoa(memberlist_starting_port) + "-" + strconv.Itoa(f.num_created)
@@ -68,24 +69,24 @@ func (f *ClientFactory) getNonLoopBackAddress() (net.IP, error) {
 	return net.IP{}, err
 }
 
-// Get clients for the test
-func GetLocalClients(num int, headName string) []client {
+// Get Clients for the test
+func GetLocalClients(num int, headName string) []Client {
 	factory := ClientFactory{}
 
 	// Create clients
-	clients := make([]client, num)
-	clientNames := make([]string, num)
+	clients := make([]Client, num)
+	ClientNames := make([]string, num)
 	for i := 0; i < num; i++ {
 		clients[i] = factory.NewClient()
 
 		tcpAddr := clients[i].node.GetTCPAddr()
-		clientNames[i] = tcpAddr.String()
-		log.Println("[DEBUG] Created client", tcpAddr.String())
+		ClientNames[i] = tcpAddr.String()
+		log.Println("[DEBUG] Created Client", tcpAddr.String())
 	}
 
 	// Create channel messengers
 	resolverMap := make(map[string]chan Message)
-	messengers := GetChannelMessengers(clientNames, resolverMap)
+	messengers := GetChannelMessengers(ClientNames, resolverMap)
 
 	// Attach chennel messengers to clients
 	for i := 0; i < num; i++ {

@@ -8,27 +8,29 @@ import (
 	"time"
 )
 
-type client struct {
+type Client struct {
 	memberTracker *memberlist.Memberlist // Underlying tracker to
 
 	pendingMembersLock sync.Mutex
 	pendingMembers     map[string]Node // Members that are online, but not active
 	ActiveMembersLock  sync.Mutex
 	ActiveMembers      map[string]Node // Members that are online and active, mapped by the memberlist.Node.Name
-	Name               string          // Unique name of the client
+	Name               string          // Unique name of the Client
 	node               Node            // Used for TCP communications
 
 	messenger Messenger
 	listener  Listener
 
 	barrierChannel chan string // The channel that handles barrier message, will be the name of the node that sent the barrier
+	// Channel for recieve broadcast messages
+	BroadcastChannel chan Message
 }
 
-func (c client) NumMembers() int {
+func (c Client) NumMembers() int {
 	return c.memberTracker.NumMembers()
 }
 
-func (c *client) NumActiveMembers() int {
+func (c *Client) NumActiveMembers() int {
 	c.ActiveMembersLock.Lock()
 	num := len(c.ActiveMembers)
 	c.ActiveMembersLock.Unlock()
@@ -40,13 +42,13 @@ func (c *client) NumActiveMembers() int {
 // when a node is alone in it's undelying memberlist. Therefore, a group
 // of nodes cannot merge with another group, but the sub group must all join
 // individually. Should this be blocking until the node is made active?
-func (c *client) Join(address string) {
+func (c *Client) Join(address string) {
 	c.memberTracker.Join([]string{address})
 	c.updateActiveMemberList([]Node{})
 	return
 }
 
-func (c client) HandleMessage(msg Message) {
+func (c Client) HandleMessage(msg Message) {
 	// log.Println("[DEBUG]", c.node.Name, " Message received", msg)
 	switch msg.Type {
 	case activateMsg:
@@ -55,12 +57,14 @@ func (c client) HandleMessage(msg Message) {
 	case barrierMsg:
 		c.barrierChannel <- msg.StringData[0] // Pass on the name, will be handled on the calling thread
 		break
+	case broadcastMsg:
+		c.BroadcastChannel <- msg
 	default:
 		log.Println("[ERROR] Unknown message type")
 	}
 }
 
-func (c *client) handleActivateMessage(msg Message) {
+func (c *Client) handleActivateMessage(msg Message) {
 
 	activeNodes, err := decodeActivateMsg(msg)
 	if err != nil {
@@ -71,7 +75,7 @@ func (c *client) handleActivateMessage(msg Message) {
 	log.Println("[DEBUG]", c.Name, "IsActive", c.IsActive(), "total active nodes: "+strconv.Itoa(len(activeNodes)))
 }
 
-func (c *client) Start() error {
+func (c *Client) Start() error {
 	// Start event processing
 	c.listener = NewListener(c)
 	go c.listener.Listen(c.messenger)
@@ -89,12 +93,12 @@ func (c *client) Start() error {
 	log.Println("[DEBUG] Started memberlist for", c.Name)
 	c.memberTracker = list
 
-	log.Println("[DEBUG] Started client", c.Name)
+	log.Println("[DEBUG] Started Client", c.Name)
 
 	return nil
 }
 
-func (c *client) Close() {
+func (c *Client) Close() {
 	c.memberTracker.Leave(time.Millisecond * 500)
 	log.Println("[DEBUG]", c.Name, "left memberTracker")
 	c.listener.Stop()
@@ -103,8 +107,8 @@ func (c *client) Close() {
 	log.Println("[DEBUG]", c.Name, "shut down")
 }
 
-// Wait until the client is active
-func (c *client) WaitActive() {
+// Wait until the Client is active
+func (c *Client) WaitActive() {
 	for {
 		if c.IsActive() == true {
 			break
@@ -116,7 +120,7 @@ func (c *client) WaitActive() {
 // Allows members currently waiting to become active to become active,
 // this method blocks and requires that all current active members
 // have also called this method.
-func (c *client) UpdateActiveMembers() int {
+func (c *Client) UpdateActiveMembers() int {
 	// Need to ensure all active members have decided to do this
 	c.Barrier()
 	c.activatePendingMembers()
@@ -124,7 +128,7 @@ func (c *client) UpdateActiveMembers() int {
 	return c.NumActiveMembers()
 }
 
-func (c *client) updateActiveMemberList(members []Node) {
+func (c *Client) updateActiveMemberList(members []Node) {
 
 	c.ActiveMembersLock.Lock()
 
@@ -144,8 +148,8 @@ func (c *client) updateActiveMemberList(members []Node) {
 
 }
 
-// Determine if the given client is in the active pool
-func (c *client) IsActive() bool {
+// Determine if the given Client is in the active pool
+func (c *Client) IsActive() bool {
 	c.ActiveMembersLock.Lock()
 	_, ok := c.ActiveMembers[c.Name]
 	c.ActiveMembersLock.Unlock()
@@ -153,7 +157,7 @@ func (c *client) IsActive() bool {
 }
 
 // Barrier that blacks for all active nodes
-func (c *client) Barrier() {
+func (c *Client) Barrier() {
 	if !c.IsActive() {
 		panic("Client is not active!")
 	}
@@ -189,12 +193,12 @@ PollingLoop:
 
 // Send message to all nodes
 // TODO implement a tree rather than naive send to all
-func (c *client) Broadcast(stringData []string, floatData []float64) {
+func (c *Client) Broadcast(stringData []string, floatData []float64) {
 	msg := CreateBroadcastMsg(stringData, floatData)
 	c.broadCastMsg(msg)
 }
 
-func (c *client) broadCastMsg(msg Message) {
+func (c *Client) broadCastMsg(msg Message) {
 	c.ActiveMembersLock.Lock()
 	log.Println("[DEBUG] Broadcasting message to", len(c.ActiveMembers), "nodes")
 	for _, node := range c.ActiveMembers {
@@ -210,7 +214,7 @@ func (c *client) broadCastMsg(msg Message) {
 
 }
 
-func (c client) NotifyJoin(n *memberlist.Node) {
+func (c Client) NotifyJoin(n *memberlist.Node) {
 	new_node := Node{
 		Name: n.Name,
 		Addr: n.Addr,
@@ -230,7 +234,7 @@ func (c client) NotifyJoin(n *memberlist.Node) {
 	c.pendingMembersLock.Unlock()
 }
 
-func (c client) NotifyLeave(n *memberlist.Node) {
+func (c Client) NotifyLeave(n *memberlist.Node) {
 	log.Println("[DEBUG]", n.Name, "left")
 	c.ActiveMembersLock.Lock()
 	// Delete the node from active members
@@ -243,6 +247,6 @@ func (c client) NotifyLeave(n *memberlist.Node) {
 	c.pendingMembersLock.Unlock()
 }
 
-func (c client) NotifyUpdate(n *memberlist.Node) {
+func (c Client) NotifyUpdate(n *memberlist.Node) {
 
 }

@@ -1,6 +1,5 @@
 package GoMM
 
-
 import (
 	"encoding/json"
 	"errors"
@@ -74,7 +73,7 @@ func decodeActivateMsg(msg Message) ([]Node, error) {
 }
 
 // Activates all pending members
-func (c *client) activatePendingMembers() {
+func (c *Client) activatePendingMembers() {
 	// Create the appended list of active members
 	c.ActiveMembersLock.Lock()
 	activeMembers := make([]Node, len(c.ActiveMembers))
@@ -116,7 +115,7 @@ func (c *client) activatePendingMembers() {
 
 // Returns a connection to the specified node
 // TODO use a connection pool for speed
-func (c *client) getTCPConection(node Node) (*net.TCPConn, error) {
+func (c *Client) getTCPConection(node Node) (*net.TCPConn, error) {
 
 	tcpAddr := node.GetTCPAddr()
 	tcp_conn, err := net.DialTCP("tcp", nil, &tcpAddr)

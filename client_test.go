@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-// Mock messenger for client tests. Collects all sent messages into a channel
+// Mock messenger for Client tests. Collects all sent messages into a channel
 // Does no resolving. Has a capacity for 50 sent messages
 type MockMessenger struct {
 	sentMessages chan Message
@@ -53,8 +53,8 @@ func GetNode(t *testing.T) Node {
 	return node
 }
 
-func GetClient_DataOnly(t *testing.T) *client {
-	c := new(client)
+func GetClient_DataOnly(t *testing.T) *Client {
+	c := new(Client)
 	f := ClientFactory{}
 	f.initializeData(c)
 
@@ -96,7 +96,7 @@ func TestClient_Barrier(t *testing.T) {
 
 	c := GetClient_DataOnly(t)
 
-	// Test single client case, only active node, should return immediately
+	// Test single Client case, only active node, should return immediately
 	c.Barrier()
 
 	// Test with multiple active nodes
@@ -146,7 +146,7 @@ func TestClient_HandleActivate(t *testing.T) {
 
 func TestClient_WaitActive(t *testing.T) {
 	assert := assert.New(t)
-	// Create a client that is not active
+	// Create a Client that is not active
 	c := GetClient_DataOnly(t)
 	c.updateActiveMemberList([]Node{})
 	assert.False(c.IsActive())
@@ -223,5 +223,4 @@ func TestClient_Broadcast(t *testing.T) {
 		assert.Equal(stringData, msg.StringData)
 		assert.Equal(floatData, msg.FloatData)
 	}
-
 }
