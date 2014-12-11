@@ -1,6 +1,5 @@
 package GoMM
 
-
 import (
 	"github.com/stretchr/testify/assert"
 	"log"
@@ -75,7 +74,7 @@ func TestInteg_ChannelMessenger(t *testing.T) {
 	assert.True(clients[2].IsActive())
 
 	clients[1].Close()
-	time.Sleep(time.Millisecond * 50)
+	time.Sleep(time.Millisecond * 100)
 	assert.Equal(2, clients[0].NumActiveMembers(), "Didn't handle client leaving")
 	assert.Equal(2, clients[2].NumActiveMembers(), "Didn't handle client leaving")
 
