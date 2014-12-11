@@ -207,8 +207,16 @@ func (c *Client) Broadcast(stringData []string, floatData []float64) {
 }
 
 // Sends a message to a node with the supplied id
-func (c *Client) Send(stringData []string, floatData []float64, target int) {
+func (c *Client) sendMsg(msg Message, targetId int) error {
+	target, err := c.ResolveId(targetId)
+	if err != nil {
+		return err
+	}
 
+	msg.Target = target
+	err = c.messenger.Send(msg)
+
+	return err
 }
 
 // Resolve the id to a client address. The id is currently based on

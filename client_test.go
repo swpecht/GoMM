@@ -231,31 +231,32 @@ func TestClient_Broadcast(t *testing.T) {
 	}
 }
 
-// func TestClient_Send(t *testing.T) {
-// 	assert := assert.New(t)
-// 	c, sent := getMessagingClient(t)
-// 	activeNodes := []Node{GetNode(t), GetNode(t), c.node}
-// 	c.updateActiveMemberList(activeNodes)
+func TestClient_SendMsg(t *testing.T) {
+	assert := assert.New(t)
+	c, sent := getMessagingClient(t)
+	activeNodes := []Node{GetNode(t), GetNode(t), c.node}
+	c.updateActiveMemberList(activeNodes)
 
-// 	stringData := []string{"Sending test"}
-// 	floatData := []float64{2.0, 48182.2}
+	sentMsg := Message{
+		StringData: []string{"Sending test"},
+		FloatData:  []float64{2.0, 48182.2},
+	}
 
-// 	go c.Send(stringData, floatData, 0)
-// 	msg := <-sent
-// 	id, _ := c.ResolveId(0)
-// 	assert.Equal(msg.Target, id)
-// 	assert.Equal(stringData, msg.StringData)
-// 	assert.Equal(floatData, msg.FloatData)
+	go c.sendMsg(sentMsg, 0)
+	msg := <-sent
+	id, _ := c.ResolveId(0)
+	assert.Equal(msg.Target, id)
+	assert.Equal(sentMsg.StringData, msg.StringData)
+	assert.Equal(sentMsg.FloatData, msg.FloatData)
 
-// 	go c.Send(stringData, floatData, 1)
-// 	msg = <-sent
-// 	id, _ = c.ResolveId(1)
-// 	assert.Equal(msg.Target, id)
-// 	assert.Equal(stringData, msg.StringData)
-// 	assert.Equal(floatData, msg.FloatData)
+	go c.sendMsg(sentMsg, 1)
+	msg = <-sent
+	id, _ = c.ResolveId(1)
+	assert.Equal(msg.Target, id)
+	assert.Equal(sentMsg.StringData, msg.StringData)
+	assert.Equal(sentMsg.FloatData, msg.FloatData)
 
-// 	t.Error("Not implemented")
-// }
+}
 
 func TestClient_ResolveId(t *testing.T) {
 	assert := assert.New(t)
