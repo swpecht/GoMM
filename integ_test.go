@@ -2,38 +2,9 @@ package GoMM
 
 import (
 	"github.com/stretchr/testify/assert"
-	"log"
 	"testing"
 	"time"
 )
-
-// Get clients for the test
-func GetLocalClients(num int, headName string) []client {
-	factory := ClientFactory{}
-
-	// Create clients
-	clients := make([]client, num)
-	clientNames := make([]string, num)
-	for i := 0; i < num; i++ {
-		clients[i] = factory.NewClient()
-
-		tcpAddr := clients[i].node.GetTCPAddr()
-		clientNames[i] = tcpAddr.String()
-		log.Println("[DEBUG] Created client", tcpAddr.String())
-	}
-
-	// Create channel messengers
-	resolverMap := make(map[string]chan Message)
-	messengers := GetChannelMessengers(clientNames, resolverMap)
-
-	// Attach chennel messengers to clients
-	for i := 0; i < num; i++ {
-		clients[i].messenger = messengers[i]
-	}
-
-	return clients
-
-}
 
 func TestInteg_ChannelMessenger(t *testing.T) {
 	assert := assert.New(t)
