@@ -1,6 +1,5 @@
 package GoMM
 
-
 import (
 	"github.com/stretchr/testify/assert"
 	"net"
@@ -186,9 +185,18 @@ func TestClient_UpdateActiveMembers(t *testing.T) {
 	// Should send messages to both pending and active
 	for i := 0; i < len(pendingNodes); i++ {
 		msg := <-sent
-		node := pendingNodes[i]
-		tcpAddr := node.GetTCPAddr()
-		assert.Equal(tcpAddr.String(), msg.Target)
+		matchANode := false
+		for j := 0; j < len(pendingNodes); j++ {
+			node := pendingNodes[j]
+			tcpAddr := node.GetTCPAddr()
+			if tcpAddr.String() == msg.Target {
+				matchANode = true
+			}
+		}
+
+		if matchANode == false {
+			t.Errorf("TestClient_UpdateActiveMembers error: The message was sent to a non-existent node.")
+		}
 		assert.Equal(activateMsg, msg.Type)
 
 	}
