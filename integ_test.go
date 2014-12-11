@@ -8,7 +8,7 @@ import (
 )
 
 // Get clients for the test
-func GetClients(t *testing.T, num int, headName string) []client {
+func GetLocalClients(num int, headName string) []client {
 	factory := ClientFactory{}
 
 	// Create clients
@@ -44,7 +44,7 @@ func TestInteg_ChannelMessenger(t *testing.T) {
 	defer timeout.Stop()
 
 	headName := "0.0.0.0:7946"
-	clients := GetClients(t, 3, headName)
+	clients := GetLocalClients(3, headName)
 
 	for i := range clients {
 		clients[i].Start()
