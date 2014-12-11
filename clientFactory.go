@@ -1,6 +1,5 @@
 package GoMM
 
-
 import (
 	"github.com/hashicorp/memberlist"
 	"net"
@@ -25,7 +24,7 @@ func (f *ClientFactory) NewClient() (c client) {
 	return
 }
 
-func (f *ClientFactory) initializeData(c *client) {
+func (f *ClientFactory) initializeData(c *client) error {
 	// Initialize variables
 	c.ActiveMembers = make(map[string]Node)
 	c.pendingMembers = make(map[string]Node)
@@ -35,9 +34,35 @@ func (f *ClientFactory) initializeData(c *client) {
 	c.Name = config.Name + ":" + strconv.Itoa(memberlist_starting_port) + "-" + strconv.Itoa(f.num_created)
 
 	// Configure the local Node data
+	address, err := f.getNonLoopBackAddress()
+
 	c.node = Node{
 		Name: c.Name,
-		Addr: net.ParseIP("10.0.2.15"),
+		Addr: address,
 		Port: config.BindPort + tcp_offset + f.num_created,
 	}
+
+	return err
+}
+
+func (f *ClientFactory) getNonLoopBackAddress() (net.IP, error) {
+	// https://www.socketloop.com/tutorials/golang-how-do-I-get-the-local-ip-non-loopback-address
+
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		return net.IP{}, err
+	}
+
+	for _, address := range addrs {
+
+		// check the address type and if it is not a loopback the display it
+		if ipnet, ok := address.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
+			if ipnet.IP.To4() != nil {
+				return ipnet.IP, err
+			}
+
+		}
+	}
+
+	return net.IP{}, err
 }
