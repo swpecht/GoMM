@@ -160,6 +160,7 @@ type TCPMessenger struct {
 	// connectionPool map[string]*net.TCPConn
 	listenAddr *net.TCPAddr // Local address to listen on
 	Name       string
+	listener   *net.TCPListener
 }
 
 // Encodes a messafe for sending over a tcp connection. Format is:
@@ -182,6 +183,22 @@ func (messenger *TCPMessenger) getConnection(address string) (*net.TCPConn, erro
 	conn, err := net.DialTCP("tcp", nil, remoteAddr)
 
 	return conn, err
+}
+
+func (messenger *TCPMessenger) getListener() (*net.TCPListener, error) {
+	if messenger.listener != nil {
+		// Already created
+		return messenger.listener, nil
+	}
+
+	listener, err := net.ListenTCP("tcp", messenger.listenAddr)
+	if err != nil {
+		log.Println("[ERROR] Error starting listener %s", err.Error())
+		return nil, err
+	}
+	log.Printf("[DEBUG] Listener started for %s", messenger.listenAddr.String())
+	messenger.listener = listener
+	return messenger.listener, nil
 }
 
 func (messenger *TCPMessenger) Decode(b []byte) (Message, error) {
@@ -212,11 +229,8 @@ func (messenger *TCPMessenger) handleConn(c *net.TCPConn, channel chan Message) 
 }
 
 func (messenger *TCPMessenger) Recv(channel chan Message) error {
-	listener, err := net.ListenTCP("tcp", messenger.listenAddr)
-	log.Printf("[DEBUG] Listener started for %s", messenger.listenAddr.String())
-	defer listener.Close()
+	listener, err := messenger.getListener()
 	if err != nil {
-		log.Println("[ERROR] Error starting listener %s", err.Error())
 		return err
 	}
 
@@ -246,6 +260,10 @@ func (messenger *TCPMessenger) Send(msg Message) error {
 	return err
 }
 
+func (messenger *TCPMessenger) resolve(addr string) (interface{}, error) {
+	return net.ResolveTCPAddr("tcp", addr)
+}
+
 // Receive a message over a tcp connections, and unmarshal it from JSON
 func (messenger *TCPMessenger) recvMessage(conn *net.TCPConn) (Message, error) {
 
@@ -255,6 +273,7 @@ func (messenger *TCPMessenger) recvMessage(conn *net.TCPConn) (Message, error) {
 		log.Println("[ERROR] Failed to read message")
 		return Message{}, err
 	}
+	log.Printf("[DEBUG] Message recieved: %s", b)
 	msg, err := messenger.Decode(b)
 	return msg, err
 }
@@ -271,4 +290,12 @@ func (messenger *TCPMessenger) sendMessage(conn *net.TCPConn, msg Message) error
 	//This is probably timing out, may beed to use a thread ppol
 	//_, err = conn.Write([]byte(msgString))
 	return err
+}
+
+func (messenger *TCPMessenger) Close() error {
+	if messenger.listener != nil {
+		return messenger.listener.Close()
+	}
+
+	return nil
 }

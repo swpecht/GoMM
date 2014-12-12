@@ -42,6 +42,11 @@ func GetTCPMessenger(name string, localAddr string) (*TCPMessenger, error) {
 		Name:       name,
 		listenAddr: lAddr,
 	}
+	// Start the tcp listener
+	_, err = messenger.getListener()
+	if err != nil {
+		return nil, err
+	}
 
 	return &messenger, nil
 }

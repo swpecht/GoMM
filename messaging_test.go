@@ -7,13 +7,23 @@ import (
 )
 
 type MockMessageHandler struct {
-	t        *testing.T
-	expected Message
+	t             *testing.T
+	expected      Message
+	recvdMessages chan Message
 }
 
 func (handler MockMessageHandler) HandleMessage(msg Message) {
 	assert := assert.New(handler.t)
 	assert.Equal(handler.expected, msg)
+	handler.recvdMessages <- msg
+}
+
+func NewMockMessageHandler(t *testing.T, expected Message) MockMessageHandler {
+	return MockMessageHandler{
+		t:             t,
+		expected:      expected,
+		recvdMessages: make(chan Message, 10),
+	}
 }
 
 func TestMessaging_TCPMessenger(t *testing.T) {
@@ -45,6 +55,43 @@ func TestMessaging_TCPMessenger(t *testing.T) {
 
 	assert.Equal(msgTo1, msgRecvd)
 
+	messenger0.Close()
+	messenger1.Close()
+
+}
+
+func TestMessaging_ListenerTCP(t *testing.T) {
+	messenger0, err := GetTCPMessenger("Messenger0", "localhost:5000")
+	if err != nil {
+		t.Errorf("Failed to create messenger 0: %s", err.Error())
+	}
+	messenger1, err := GetTCPMessenger("Messenger1", "localhost:5001")
+	if err != nil {
+		t.Errorf("Failed to create messenger 1: %s", err.Error())
+	}
+
+	msgTo1 := Message{
+		Target:     "localhost:5001",
+		StringData: []string{"Message to 1 for listen test"},
+	}
+
+	msgHandler := NewMockMessageHandler(t, msgTo1)
+	l := NewListener(msgHandler)
+
+	go l.Listen(messenger1)
+
+	// Should immediately allow sending or all messages
+	for i := 0; i < 5; i++ {
+		err := messenger0.Send(msgTo1)
+		if err != nil {
+			t.Error(err.Error())
+		} else {
+			<-msgHandler.recvdMessages
+		}
+	}
+
+	messenger0.Close()
+	messenger1.Close()
 }
 
 func TestMessaging_ChannelMessenger(t *testing.T) {
@@ -106,10 +153,7 @@ func TestMessaging_Listener(t *testing.T) {
 		StringData: []string{"Listener test"},
 	}
 
-	msgHandler := MockMessageHandler{
-		t:        t,
-		expected: msgTo1,
-	}
+	msgHandler := NewMockMessageHandler(t, msgTo1)
 
 	l := NewListener(msgHandler)
 	// Test early stop
