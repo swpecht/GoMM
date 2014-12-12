@@ -161,6 +161,7 @@ type TCPMessenger struct {
 	listenAddr *net.TCPAddr // Local address to listen on
 	Name       string
 	listener   *net.TCPListener
+	conns      map[string]*net.TCPConn
 }
 
 // Encodes a messafe for sending over a tcp connection. Format is:
@@ -175,12 +176,23 @@ func (messenger *TCPMessenger) Encode(msg Message) (outputMsg string, err error)
 }
 
 func (messenger *TCPMessenger) getConnection(address string) (*net.TCPConn, error) {
+	conn, ok := messenger.conns[address]
+	if ok == true {
+		// Return already created connection
+		return conn, nil
+	}
+
 	remoteAddr, err := net.ResolveTCPAddr("tcp", address)
 	if err != nil {
 		return nil, err
 	}
 
-	conn, err := net.DialTCP("tcp", nil, remoteAddr)
+	conn, err = net.DialTCP("tcp", nil, remoteAddr)
+	if err != nil {
+		return conn, err
+	}
+	// Keep alive
+	conn.SetKeepAlive(true)
 
 	return conn, err
 }
