@@ -6,8 +6,21 @@ import (
 	"time"
 )
 
+func TestInteg_TCPMessenger(t *testing.T) {
+	timeout := time.AfterFunc(2000*time.Millisecond, func() {
+		panic("TestInteg_TCPMessenger timed out!")
+	})
+	defer timeout.Stop()
+
+	clients, err := GetTCPClients(3)
+	if err != nil {
+		t.Errorf("Failed to create clients %s", err.Error())
+		return
+	}
+	testClients(t, clients)
+}
+
 func TestInteg_ChannelMessenger(t *testing.T) {
-	assert := assert.New(t)
 
 	timeout := time.AfterFunc(2000*time.Millisecond, func() {
 		panic("TestInteg_ChannelMessenger timed out!")
@@ -15,6 +28,13 @@ func TestInteg_ChannelMessenger(t *testing.T) {
 	defer timeout.Stop()
 
 	clients := GetLocalClients(3)
+
+	testClients(t, clients)
+
+}
+
+func testClients(t *testing.T, clients []Client) {
+	assert := assert.New(t)
 
 	for i := range clients {
 		clients[i].Start()
@@ -49,4 +69,6 @@ func TestInteg_ChannelMessenger(t *testing.T) {
 	assert.Equal(2, clients[0].NumActiveMembers(), "Didn't handle client leaving")
 	assert.Equal(2, clients[2].NumActiveMembers(), "Didn't handle client leaving")
 
+	clients[0].Close()
+	clients[2].Close()
 }

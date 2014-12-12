@@ -95,5 +95,24 @@ func GetLocalClients(num int) []Client {
 	}
 
 	return clients
+}
 
+// Get TCP clients
+func GetTCPClients(num int) ([]Client, error) {
+	factory := ClientFactory{}
+
+	clients := make([]Client, num)
+	for i := 0; i < num; i++ {
+		clients[i] = factory.NewClient()
+		tcpAddr := clients[i].node.GetTCPAddr()
+		messenger, err := GetTCPMessenger(tcpAddr.String(), tcpAddr.String())
+		if err != nil {
+			log.Println("[ERROR] Failed to create client", tcpAddr.String())
+			return clients, err
+		}
+		log.Println("[DEBUG] Created Client", tcpAddr.String())
+		clients[i].messenger = messenger
+	}
+
+	return clients, nil
 }
