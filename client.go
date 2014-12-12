@@ -151,11 +151,12 @@ func (c *Client) Start() error {
 }
 
 func (c *Client) Close() {
-	c.memberTracker.Leave(time.Millisecond * 1)
+	c.memberTracker.Leave(time.Millisecond * 500)
+	c.memberTracker.Shutdown()
 	log.Println("[DEBUG]", c.Name, "left memberTracker")
 	c.listener.Stop()
 	// Not totally sure how closing channels works TODO
-	close(c.barrierChannel)
+	// close(c.barrierChannel)
 	log.Println("[DEBUG]", c.Name, "shut down")
 }
 
@@ -335,7 +336,7 @@ func (c Client) NotifyJoin(n *memberlist.Node) {
 }
 
 func (c Client) NotifyLeave(n *memberlist.Node) {
-	log.Println("[DEBUG]", n.Name, "left")
+	log.Println("[DEBUG]", c.Name, "sees", n.Name, "left")
 	c.ActiveMembersLock.Lock()
 	// Delete the node from active members
 	delete(c.ActiveMembers, n.Name)
