@@ -14,13 +14,13 @@ func TestInteg_ChannelMessenger(t *testing.T) {
 	})
 	defer timeout.Stop()
 
-	headName := "0.0.0.0:7946"
-	clients := GetLocalClients(3, headName)
+	clients := GetLocalClients(3)
 
 	for i := range clients {
 		clients[i].Start()
 	}
 
+	headName := clients[0].JoinAddr()
 	clients[1].Join(headName)
 	clients[2].Join(headName)
 	num_clients := clients[0].NumMembers()
@@ -45,7 +45,7 @@ func TestInteg_ChannelMessenger(t *testing.T) {
 	assert.True(clients[2].IsActive())
 
 	clients[1].Close()
-	time.Sleep(time.Millisecond * 100)
+	time.Sleep(time.Millisecond * 500)
 	assert.Equal(2, clients[0].NumActiveMembers(), "Didn't handle client leaving")
 	assert.Equal(2, clients[2].NumActiveMembers(), "Didn't handle client leaving")
 

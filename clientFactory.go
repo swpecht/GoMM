@@ -39,9 +39,10 @@ func (f *ClientFactory) initializeData(c *Client) error {
 	address, err := f.getNonLoopBackAddress()
 
 	c.node = Node{
-		Name: c.Name,
-		Addr: address,
-		Port: config.BindPort + tcp_offset + f.num_created,
+		Name:           c.Name,
+		Addr:           address,
+		Port:           config.BindPort + tcp_offset + f.num_created,
+		MemberlistPort: config.BindPort + f.num_created,
 	}
 
 	return err
@@ -70,7 +71,7 @@ func (f *ClientFactory) getNonLoopBackAddress() (net.IP, error) {
 }
 
 // Get Clients for the test
-func GetLocalClients(num int, headName string) []Client {
+func GetLocalClients(num int) []Client {
 	factory := ClientFactory{}
 
 	// Create clients

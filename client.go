@@ -50,6 +50,10 @@ func (c *Client) Join(address string) {
 	return
 }
 
+func (c *Client) JoinAddr() string {
+	return c.node.GetMemberlistStringAddr()
+}
+
 func (c Client) HandleMessage(msg Message) {
 	if msg.Type == activateMsg || msg.Type == broadcastMsg || msg.Type == barrierMsg {
 		c.continueMessageBroadcast(msg) // continues to broadcast the message
@@ -128,9 +132,10 @@ func (c *Client) Start() error {
 	go c.listener.Listen(c.messenger)
 
 	var config *memberlist.Config = memberlist.DefaultLocalConfig()
-	config.BindPort = c.node.Port - 100 // off set for tcp
+	config.BindPort = c.node.MemberlistPort
+	config.BindAddr = c.node.Addr.String()
 	config.Name = c.Name
-	config.AdvertisePort = c.node.Port - 100 // off set for tcp
+	config.AdvertisePort = c.node.MemberlistPort
 	config.Events = c
 
 	list, err := memberlist.Create(config)
@@ -146,7 +151,7 @@ func (c *Client) Start() error {
 }
 
 func (c *Client) Close() {
-	c.memberTracker.Leave(time.Millisecond * 500)
+	c.memberTracker.Leave(time.Millisecond * 1)
 	log.Println("[DEBUG]", c.Name, "left memberTracker")
 	c.listener.Stop()
 	// Not totally sure how closing channels works TODO

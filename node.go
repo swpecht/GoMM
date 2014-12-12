@@ -5,9 +5,10 @@ import (
 )
 
 type Node struct {
-	Name string
-	Addr net.IP // The address this node can be access at
-	Port int    // The port this node listens for connections on
+	Name           string
+	Addr           net.IP // The address this node can be access at
+	Port           int    // The port this node listens for connections on
+	MemberlistPort int
 }
 
 // Retruns the connection address for this node
@@ -18,5 +19,10 @@ func (n Node) GetTCPAddr() net.TCPAddr {
 
 func (n Node) GetStringAddr() string {
 	addr := n.GetTCPAddr()
+	return addr.String()
+}
+
+func (n Node) GetMemberlistStringAddr() string {
+	addr := net.TCPAddr{IP: n.Addr, Port: n.MemberlistPort}
 	return addr.String()
 }
