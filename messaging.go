@@ -1,6 +1,5 @@
 package GoMM
 
-
 import (
 	"bufio"
 	"bytes"
@@ -27,6 +26,7 @@ type Messenger interface {
 type Message struct {
 	Type       messageType
 	Target     string
+	Origin     int // Origin of the message
 	StringData []string
 	FloatData  []float64
 }

@@ -88,13 +88,12 @@ func TestClient_IsActive(t *testing.T) {
 }
 
 func TestClient_Barrier(t *testing.T) {
-	assert := assert.New(t)
 	timer := time.AfterFunc(1000*time.Millisecond, func() {
 		panic("Hung during barrier test!")
 	})
 	defer timer.Stop()
 
-	c, sent := getMessagingClient(t)
+	c, _ := getMessagingClient(t)
 
 	// Test single Client case, only active node, should return immediately
 	c.Barrier()
@@ -111,16 +110,10 @@ func TestClient_Barrier(t *testing.T) {
 		}
 
 	}()
-	// Should send 3 messages
-	for i := 0; i < len(activeNodes); i++ {
-		msg := <-sent
-		assert.Equal(barrierMsg, msg.Type)
-	}
 
 	c.HandleMessage(GetBarrierMessage(t, activeNodes[0].Name))
-	c.HandleMessage(GetBarrierMessage(t, activeNodes[1].Name))
 	blocked = true
-	c.HandleMessage(GetBarrierMessage(t, activeNodes[2].Name))
+	c.HandleMessage(GetBarrierMessage(t, activeNodes[1].Name))
 
 }
 
@@ -211,22 +204,61 @@ func getMessagingClient(t *testing.T) (*Client, chan Message) {
 }
 
 func TestClient_Broadcast(t *testing.T) {
+	// Need to make broadcast not send to itself
+	// Then can implement a tree based broadcast
+	// Can test the entire tree manually by calling broadcast
+	// and then feeding in messages to the next clients handle message.
+	// That way all the listeners and such won't have to be started.
+
 	assert := assert.New(t)
-	c, sent := getMessagingClient(t)
-	activeNodes := []Node{GetNode(t), GetNode(t), c.node}
-	c.updateActiveMemberList(activeNodes)
+	numClients := 3
+	clients := make([]*Client, numClients)
+	sendChans := make([]chan Message, numClients)
+	activeNodes := make([]Node, numClients)
+	for i := 0; i < numClients; i++ {
+		clients[i], sendChans[i] = getMessagingClient(t)
+		clients[i].node = GetNode(t)
+		activeNodes[i] = clients[i].node
+	}
+
+	for i := 0; i < numClients; i++ {
+		clients[i].updateActiveMemberList(activeNodes)
+	}
 
 	stringData := []string{"Hello", "World"}
 	floatData := []float64{2.0, 48182.2}
-	go c.Broadcast(stringData, floatData)
+	go clients[0].Broadcast(stringData, floatData)
 
-	// Should send 3 messages
-	for i := 0; i < len(activeNodes); i++ {
-		msg := <-sent
+	// Get the intial message to node0
+	msg := <-sendChans[0]
+	assert.Equal(broadcastMsg, msg.Type)
+	assert.Equal(stringData, msg.StringData)
+	assert.Equal(floatData, msg.FloatData)
+	assert.Equal(0, msg.Origin)
+
+	// Feed the message into client 0
+	clients[0].HandleMessage(msg)
+
+	// Should send 2 messages
+	for i := 1; i < len(activeNodes); i++ {
+		msg := <-sendChans[0]
 		assert.Equal(broadcastMsg, msg.Type)
 		assert.Equal(stringData, msg.StringData)
 		assert.Equal(floatData, msg.FloatData)
+		assert.Equal(activeNodes[i].GetStringAddr(), msg.Target)
 	}
+
+	// Shouldn't be any more messages
+	for i := range activeNodes {
+		close(sendChans[i])
+	}
+
+	for i := 1; i < len(activeNodes); i++ {
+		// Will cause panic if try to send since chan is closed
+		clients[i].HandleMessage(msg)
+		<-clients[i].BroadcastChannel
+	}
+
 }
 
 func TestClient_SendMsg(t *testing.T) {
@@ -282,6 +314,72 @@ func TestClient_ResolveId(t *testing.T) {
 	_, err = c.ResolveId(3)
 	if err == nil {
 		t.Error("Failed to handle id out of bounds")
+	}
+
+}
+
+func TestClient_GetAddrId(t *testing.T) {
+	assert := assert.New(t)
+	// Reset node num to avoidd previous test interfecernce
+	nodeNumLock.Lock()
+	nodeNum = 0
+	nodeNumLock.Unlock()
+
+	c := GetClient_DataOnly(t)
+	activeNodes := []Node{GetNode(t), GetNode(t), c.node}
+	c.updateActiveMemberList(activeNodes)
+
+	id, err := c.GetAddrId(activeNodes[0].GetStringAddr())
+	assert.Equal(0, id)
+	assert.Nil(err)
+
+	id, err = c.GetAddrId(activeNodes[1].GetStringAddr())
+	assert.Equal(1, id)
+	assert.Nil(err)
+
+	id, err = c.GetAddrId(activeNodes[2].GetStringAddr())
+	assert.Equal(2, id)
+	assert.Nil(err)
+
+	_, err = c.GetAddrId("Junk")
+	if err == nil {
+		t.Error("Failed to handle addr not found")
+	}
+
+}
+
+var childTests = []struct {
+	id         int
+	totalNodes int
+	left       int
+	right      int
+}{
+	{0, 0, -1, -1},
+
+	{0, 7, 1, 2},
+	{1, 7, 3, 4},
+	{2, 7, 5, 6},
+	{3, 7, -1, -1},
+
+	{3, 15, 7, 8},
+	{4, 15, 9, 10},
+	{5, 15, 11, 12},
+	{6, 15, 13, 14},
+	{6, 14, 13, -1},
+}
+
+func TestClient_GetChildren(t *testing.T) {
+	c := Client{}
+
+	for _, tt := range childTests {
+		left, right := c.getChildren(tt.id, tt.totalNodes)
+		if left != tt.left {
+			t.Errorf("TestClient_GetChildren failed left for id %d total %d. Expected %d, got %d", tt.id, tt.totalNodes, tt.left, left)
+		}
+
+		if right != tt.right {
+			t.Errorf("TestClient_GetChildren failed right for id %d total %d. Expected %d, got %d", tt.id, tt.totalNodes, tt.right, right)
+		}
 	}
 
 }

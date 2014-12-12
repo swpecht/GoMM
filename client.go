@@ -51,7 +51,10 @@ func (c *Client) Join(address string) {
 }
 
 func (c Client) HandleMessage(msg Message) {
-	// log.Println("[DEBUG]", c.node.Name, " Message received", msg)
+	if msg.Type == activateMsg || msg.Type == broadcastMsg || msg.Type == barrierMsg {
+		c.continueMessageBroadcast(msg) // continues to broadcast the message
+	}
+
 	switch msg.Type {
 	case activateMsg:
 		c.handleActivateMessage(msg)
@@ -61,6 +64,7 @@ func (c Client) HandleMessage(msg Message) {
 		break
 	case broadcastMsg:
 		c.BroadcastChannel <- msg
+		break
 	default:
 		log.Println("[ERROR] Unknown message type")
 	}
@@ -75,6 +79,47 @@ func (c *Client) handleActivateMessage(msg Message) {
 	}
 	c.updateActiveMemberList(activeNodes)
 	log.Println("[DEBUG]", c.Name, "IsActive", c.IsActive(), "total active nodes: "+strconv.Itoa(len(activeNodes)))
+}
+
+// Handles messages that must be broadcast
+func (c *Client) continueMessageBroadcast(msg Message) {
+	// Send to children nodes if they exit
+	id := c.GetId()
+	c.ActiveMembersLock.Lock()
+	totalNodes := len(c.ActiveMembers)
+	c.ActiveMembersLock.Unlock()
+	left, right := c.getChildren(id, totalNodes)
+
+	// Send the message to the children nodes if they exist
+	if left != -1 {
+		c.sendMsg(msg, left)
+	}
+
+	if right != -1 {
+		c.sendMsg(msg, right)
+	}
+
+}
+
+// Returns the children in a binary tree for the nodes. Returns
+// -1 for invalid nodes
+func (c *Client) getChildren(id, totalNodes int) (int, int) {
+	if totalNodes == 0 {
+		// invalid tree
+		return -1, -1
+	}
+
+	left := 2*id + 1
+	right := 2 * (id + 1)
+
+	if left >= totalNodes {
+		left = -1
+	}
+
+	if right >= totalNodes {
+		right = -1
+	}
+	return left, right
 }
 
 func (c *Client) Start() error {
@@ -183,9 +228,9 @@ PollingLoop:
 		select {
 		case name := <-c.barrierChannel:
 			responded[name] = true
-			log.Println("[DEBUG]", c.Name, "Received barrier from", name, len(responded), "of", c.NumActiveMembers())
+			log.Println("[DEBUG]", c.Name, "Received barrier from", name, len(responded), "of", c.NumActiveMembers()-1)
 		default:
-			if len(responded) == c.NumActiveMembers() {
+			if len(responded) == c.NumActiveMembers()-1 {
 				log.Println("[DEBUG] Barrier completed by", c.Name)
 				break PollingLoop // everyone is at the barrier
 			}
@@ -197,13 +242,8 @@ PollingLoop:
 // TODO implement a tree rather than naive send to all
 func (c *Client) Broadcast(stringData []string, floatData []float64) {
 	msg := CreateBroadcastMsg(stringData, floatData)
+	msg.Origin = c.GetId()
 	c.broadCastMsg(msg)
-	// Need to implement a less naive broadcast using a tree structure
-	// Will involvde adding a broadcast handler to echo the messageType
-	// The most difficult part will be determining who to send to
-
-	// Make broadcast off of ids - make a send message function that
-	// sends to a given id
 }
 
 // Sends a message to a node with the supplied id
@@ -221,41 +261,52 @@ func (c *Client) sendMsg(msg Message, targetId int) error {
 // Resolve the id to a client address. The id is currently based on
 // the sorted string order of the nodes address.
 func (c *Client) ResolveId(id int) (string, error) {
-	c.ActiveMembersLock.Lock()
-	defer c.ActiveMembersLock.Unlock()
-
 	// Check valid id
 	if id < 0 || id > len(c.ActiveMembers)-1 {
 		return "", errors.New("Id out of bounds")
 	}
+	memberAddresses := c.getSortedMemberAddresses()
+
+	return memberAddresses[id], nil
+}
+
+func (c *Client) GetAddrId(addr string) (int, error) {
+	memberAddresses := c.getSortedMemberAddresses()
+
+	for i := 0; i < len(memberAddresses); i++ {
+		if addr == memberAddresses[i] {
+			return i, nil
+		}
+	}
+
+	return -1, errors.New("Address not found")
+}
+
+func (c *Client) GetId() int {
+	id, _ := c.GetAddrId(c.node.GetStringAddr())
+	return id
+}
+
+func (c *Client) getSortedMemberAddresses() []string {
+	c.ActiveMembersLock.Lock()
+	defer c.ActiveMembersLock.Unlock()
 
 	// Generate a list of addresses
 	memberAddresses := make([]string, len(c.ActiveMembers))
 	i := 0
 	for _, v := range c.ActiveMembers {
-		addr := v.GetTCPAddr()
-		memberAddresses[i] = addr.String()
+		memberAddresses[i] = v.GetStringAddr()
 		i++
 	}
 
 	sort.Strings(memberAddresses)
 
-	return memberAddresses[id], nil
+	return memberAddresses
 }
 
 func (c *Client) broadCastMsg(msg Message) {
-	c.ActiveMembersLock.Lock()
-	numMembers := len(c.ActiveMembers)
-	c.ActiveMembersLock.Unlock()
-
-	log.Println("[DEBUG] Broadcasting message to", numMembers, "nodes")
-	for i := 0; i < numMembers; i++ {
-		err := c.sendMsg(msg, i)
-		if err != nil {
-			log.Println("[ERROR] Failed to broadcast message to node", i)
-		}
-	}
-
+	// Send it to the root node for propogation
+	c.sendMsg(msg, 0)
 }
 
 func (c Client) NotifyJoin(n *memberlist.Node) {
