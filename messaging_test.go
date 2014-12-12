@@ -16,7 +16,38 @@ func (handler MockMessageHandler) HandleMessage(msg Message) {
 	assert.Equal(handler.expected, msg)
 }
 
-func TestMessaging_ChannelMesseger(t *testing.T) {
+func TestMessaging_TCPMessenger(t *testing.T) {
+	assert := assert.New(t)
+	messenger0, err := GetTCPMessenger("Messenger0", "localhost:5000")
+	if err != nil {
+		t.Errorf("Failed to create messenger 0: %s", err.Error())
+	}
+	messenger1, err := GetTCPMessenger("Messenger1", "localhost:5001")
+	if err != nil {
+		t.Errorf("Failed to create messenger 1: %s", err.Error())
+	}
+
+	msgTo1 := Message{
+		Target:     "localhost:5001",
+		StringData: []string{"Message to 1"},
+	}
+
+	recvrChannel := make(chan Message)
+	go messenger1.Recv(recvrChannel)
+	// Give time for tcp listener to start
+	time.Sleep(time.Millisecond * 1000)
+	err = messenger0.Send(msgTo1)
+	if err != nil {
+		t.Errorf("Failed to send message %s", err.Error())
+	}
+
+	msgRecvd := <-recvrChannel
+
+	assert.Equal(msgTo1, msgRecvd)
+
+}
+
+func TestMessaging_ChannelMessenger(t *testing.T) {
 	assert := assert.New(t)
 	resolverMap := make(map[string]chan Message)
 	messengers := GetChannelMessengers([]string{"Messenger0", "Messenger1"}, resolverMap)

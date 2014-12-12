@@ -1,5 +1,9 @@
 package GoMM
 
+import (
+	"net"
+)
+
 // Returns the ChannelMessengers and adds them all to the supplied resolver map.
 func GetChannelMessengers(names []string, resolverMap map[string]chan Message) []ChannelMessenger {
 	num := len(names)
@@ -26,4 +30,18 @@ func GetChannelMessenger(name string, resolverMap map[string]chan Message) Chann
 	messenger.Incoming = channel
 
 	return messenger
+}
+
+func GetTCPMessenger(name string, localAddr string) (*TCPMessenger, error) {
+	lAddr, err := net.ResolveTCPAddr("tcp", localAddr)
+	if err != nil {
+		return nil, err
+	}
+
+	messenger := TCPMessenger{
+		Name:       name,
+		listenAddr: lAddr,
+	}
+
+	return &messenger, nil
 }

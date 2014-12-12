@@ -157,19 +157,9 @@ func (l *Listener) Stop() error {
 // http://golang.org/pkg/net/textproto/
 // Good messaging library
 type TCPMessenger struct {
-}
-
-// tcpListen listens for and handles incoming connections
-func (messenger *TCPMessenger) tcpListen(listener *net.TCPListener, channel chan Message) {
-	for {
-		conn, err := listener.AcceptTCP()
-		if err != nil {
-			log.Println("[DEBUG] Closing listener", listener.Addr, err.Error())
-			// listener.Close()
-			return
-		}
-		go messenger.handleConn(conn, channel)
-	}
+	// connectionPool map[string]*net.TCPConn
+	listenAddr *net.TCPAddr // Local address to listen on
+	Name       string
 }
 
 // Encodes a messafe for sending over a tcp connection. Format is:
@@ -181,6 +171,17 @@ func (messenger *TCPMessenger) Encode(msg Message) (outputMsg string, err error)
 	}
 	outputMsg += string(msgBody) + string('\n')
 	return
+}
+
+func (messenger *TCPMessenger) getConnection(address string) (*net.TCPConn, error) {
+	remoteAddr, err := net.ResolveTCPAddr("tcp", address)
+	if err != nil {
+		return nil, err
+	}
+
+	conn, err := net.DialTCP("tcp", nil, remoteAddr)
+
+	return conn, err
 }
 
 func (messenger *TCPMessenger) Decode(b []byte) (Message, error) {
@@ -208,6 +209,41 @@ func (messenger *TCPMessenger) handleConn(c *net.TCPConn, channel chan Message) 
 	// Quesues messages for processing in the channel
 	channel <- msg
 
+}
+
+func (messenger *TCPMessenger) Recv(channel chan Message) error {
+	listener, err := net.ListenTCP("tcp", messenger.listenAddr)
+	log.Printf("[DEBUG] Listener started for %s", messenger.listenAddr.String())
+	defer listener.Close()
+	if err != nil {
+		log.Println("[ERROR] Error starting listener %s", err.Error())
+		return err
+	}
+
+	log.Printf("[DEBUG] Awaiting connection on %s", messenger.listenAddr.String())
+	conn, err := listener.AcceptTCP()
+	if err != nil {
+		return err
+	}
+
+	log.Printf("[DEBUG] Connection received on %s from %s", messenger.listenAddr.String(), conn.RemoteAddr().String())
+	msg, err := messenger.recvMessage(conn)
+	if err != nil {
+		return err
+	}
+
+	channel <- msg
+	return nil
+}
+
+func (messenger *TCPMessenger) Send(msg Message) error {
+	conn, err := messenger.getConnection(msg.Target)
+	if err != nil {
+		return err
+	}
+
+	err = messenger.sendMessage(conn, msg)
+	return err
 }
 
 // Receive a message over a tcp connections, and unmarshal it from JSON
