@@ -240,9 +240,9 @@ PollingLoop:
 		select {
 		case name := <-c.barrierChannel:
 			responded[name] = true
-			log.Println("[DEBUG]", c.Name, "Received barrier from", name, len(responded), "of", c.NumActiveMembers()-1)
+			log.Println("[DEBUG]", c.Name, "Received barrier from", name, len(responded), "of", c.NumActiveMembers())
 		default:
-			if len(responded) == c.NumActiveMembers()-1 {
+			if len(responded) == c.NumActiveMembers() {
 				log.Println("[DEBUG] Barrier completed by", c.Name)
 				break PollingLoop // everyone is at the barrier
 			}
