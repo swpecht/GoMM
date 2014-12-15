@@ -97,6 +97,10 @@ func GetLocalClients(num int) []Client {
 	return clients
 }
 
+// func GetTCPClient() ([]Client, error) {
+// 	return nil,
+// }
+
 // Get TCP clients
 func GetTCPClients(num int) ([]Client, error) {
 	factory := ClientFactory{}
@@ -106,11 +110,19 @@ func GetTCPClients(num int) ([]Client, error) {
 		clients[i] = factory.NewClient()
 		tcpAddr := clients[i].node.GetTCPAddr()
 		messenger, err := GetTCPMessenger(tcpAddr.String(), tcpAddr.String())
-		if err != nil {
-			log.Println("[ERROR] Failed to create client", tcpAddr.String())
-			return clients, err
+		for err != nil {
+			// If already in use, try a different port
+			log.Printf("[ERROR] Failed to create client: %s. Incrementing port and trying again", tcpAddr.String())
+			clients[i].node.Port += 1
+			clients[i].node.MemberlistPort += 1
+			tcpAddr = clients[i].node.GetTCPAddr()
+			messenger, err = GetTCPMessenger(tcpAddr.String(), tcpAddr.String())
 		}
-		log.Println("[DEBUG] Created Client", tcpAddr.String())
+		// if err != nil {
+		// 	log.Println("[ERROR] Failed to create client", tcpAddr.String())
+		// 	return clients, err
+		// }
+		// log.Println("[DEBUG] Created Client", tcpAddr.String())
 		clients[i].messenger = messenger
 	}
 

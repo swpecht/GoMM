@@ -105,6 +105,12 @@ func (c *Client) continueMessageBroadcast(msg Message) {
 
 }
 
+func (c *Client) GetNumPendingMembers() int {
+	c.pendingMembersLock.Lock()
+	defer c.pendingMembersLock.Unlock()
+	return len(c.pendingMembers)
+}
+
 // Returns the children in a binary tree for the nodes. Returns
 // -1 for invalid nodes
 func (c *Client) getChildren(id, totalNodes int) (int, int) {
