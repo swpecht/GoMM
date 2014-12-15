@@ -111,6 +111,10 @@ func GetTCPClients(num int) ([]Client, error) {
 			log.Printf("[ERROR] Failed to create client: %s. Incrementing port and trying again", tcpAddr.String())
 			clients[i].node.Port += 1
 			clients[i].node.MemberlistPort += 1
+			var config *memberlist.Config = memberlist.DefaultLocalConfig()
+			clients[i].Name = config.Name + ":" + strconv.Itoa(clients[i].node.MemberlistPort)
+			clients[i].node.Name = clients[i].Name
+
 			tcpAddr = clients[i].node.GetTCPAddr()
 			messenger, err = GetTCPMessenger(tcpAddr.String(), tcpAddr.String())
 		}
