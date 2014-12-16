@@ -88,11 +88,6 @@ func TestClient_IsActive(t *testing.T) {
 }
 
 func TestClient_Barrier(t *testing.T) {
-	// timer := time.AfterFunc(1000*time.Millisecond, func() {
-	// 	panic("Hung during barrier test!")
-	// })
-	// defer timer.Stop()
-
 	c, _ := getMessagingClient(t)
 
 	// Test single Client case, only active node, should return immediately
@@ -207,12 +202,6 @@ func getMessagingClient(t *testing.T) (*Client, chan Message) {
 }
 
 func TestClient_Broadcast(t *testing.T) {
-	// Need to make broadcast not send to itself
-	// Then can implement a tree based broadcast
-	// Can test the entire tree manually by calling broadcast
-	// and then feeding in messages to the next clients handle message.
-	// That way all the listeners and such won't have to be started.
-
 	assert := assert.New(t)
 	numClients := 3
 	clients := make([]*Client, numClients)

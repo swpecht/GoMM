@@ -97,28 +97,38 @@ func GetLocalClients(num int) []*Client {
 	return clients
 }
 
+func GetTCPClient(factory ClientFactory) (*Client, error) {
+	c := factory.NewClient()
+	tcpAddr := c.node.GetTCPAddr()
+	messenger, err := GetTCPMessenger(tcpAddr.String(), tcpAddr.String())
+	for err != nil {
+		// If already in use, try a different port
+		log.Printf("[DEBUG] Failed to create client: %s. Incrementing port and trying again", tcpAddr.String())
+		c.node.Port += 1
+		c.node.MemberlistPort += 1
+		var config *memberlist.Config = memberlist.DefaultLocalConfig()
+		c.Name = config.Name + ":" + strconv.Itoa(c.node.MemberlistPort)
+		c.node.Name = c.Name
+
+		tcpAddr = c.node.GetTCPAddr()
+		messenger, err = GetTCPMessenger(tcpAddr.String(), tcpAddr.String())
+	}
+	c.messenger = messenger
+
+	return c, nil
+}
+
 // Get TCP clients
 func GetTCPClients(num int) ([]*Client, error) {
 	factory := ClientFactory{}
 
 	clients := make([]*Client, num)
+	var err error
 	for i := 0; i < num; i++ {
-		clients[i] = factory.NewClient()
-		tcpAddr := clients[i].node.GetTCPAddr()
-		messenger, err := GetTCPMessenger(tcpAddr.String(), tcpAddr.String())
-		for err != nil {
-			// If already in use, try a different port
-			log.Printf("[DEBUG] Failed to create client: %s. Incrementing port and trying again", tcpAddr.String())
-			clients[i].node.Port += 1
-			clients[i].node.MemberlistPort += 1
-			var config *memberlist.Config = memberlist.DefaultLocalConfig()
-			clients[i].Name = config.Name + ":" + strconv.Itoa(clients[i].node.MemberlistPort)
-			clients[i].node.Name = clients[i].Name
-
-			tcpAddr = clients[i].node.GetTCPAddr()
-			messenger, err = GetTCPMessenger(tcpAddr.String(), tcpAddr.String())
+		clients[i], err = GetTCPClient(factory)
+		if err != nil {
+			return clients, err
 		}
-		clients[i].messenger = messenger
 	}
 
 	return clients, nil

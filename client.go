@@ -44,10 +44,20 @@ func (c *Client) NumActiveMembers() int {
 // when a node is alone in it's undelying memberlist. Therefore, a group
 // of nodes cannot merge with another group, but the sub group must all join
 // individually. Should this be blocking until the node is made active?
-func (c *Client) Join(address string) {
-	c.memberTracker.Join([]string{address})
+func (c *Client) Join(address string) error {
+	// See if the same address
+	isSelf := isSelfAddr(address, c.node.MemberlistPort)
+	if isSelf {
+		// Don't need to do anything
+		return nil
+	}
+
+	_, err := c.memberTracker.Join([]string{address})
+	if err != nil {
+		return err
+	}
 	c.updateActiveMemberList([]Node{})
-	return
+	return nil
 }
 
 func (c *Client) JoinAddr() string {

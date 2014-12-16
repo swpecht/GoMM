@@ -30,7 +30,27 @@ func TestInteg_ChannelMessenger(t *testing.T) {
 	clients := GetLocalClients(3)
 
 	testClients(t, clients)
+}
 
+func TestInteg_SelfJoin(t *testing.T) {
+	f := ClientFactory{}
+	c, err := GetTCPClient(f)
+	if err != nil {
+		t.Errorf("Failed to create TCP client %s", err.Error())
+	}
+
+	c.Start()
+	// Use local host rather than a join address to ensure a string compare
+	// isn't being done to validate the self join. This would fail in production
+	// where a different external ip is used or a hostname.
+	err = c.Join(c.JoinAddr())
+	if err != nil {
+		t.Errorf("Errored on self join %s", err.Error())
+	}
+
+	if !c.IsActive() {
+		t.Error("Client did not remain active after self join")
+	}
 }
 
 func testClients(t *testing.T, clients []*Client) {

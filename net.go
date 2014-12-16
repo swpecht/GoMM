@@ -125,3 +125,42 @@ func (c *Client) getTCPConection(node Node) (*net.TCPConn, error) {
 
 	return tcp_conn, err
 }
+
+// Checks if a join address refers to a node joining
+func isSelfAddr(rAddr string, memberlistPort int) bool {
+
+	tcpAddr, err := net.ResolveTCPAddr("tcp", rAddr)
+	if err != nil {
+		// Invalid addr so cant be a match
+		return false
+	}
+	// First check the ports
+	if tcpAddr.Port != memberlistPort {
+		return false
+	}
+
+	// Error occurs, can't tell, so assume false
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		return false
+	}
+
+	// Check against all addresses
+	for _, address := range addrs {
+		ipnet, ok := address.(*net.IPNet)
+		if !ok {
+			continue
+		}
+		ip4 := ipnet.IP.To4()
+
+		if ip4 == nil {
+			continue
+		}
+		log.Println("[DEBUG]", tcpAddr.IP.String(), ip4.String())
+		if ip4.String() == tcpAddr.IP.String() {
+			return true
+		}
+	}
+
+	return false
+}
