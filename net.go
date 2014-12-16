@@ -91,6 +91,8 @@ func (c *Client) activatePendingMembers() {
 		pendingMembers[i] = value
 		i++
 	}
+	// Clear pending members
+	c.pendingMembers = make(map[string]Node)
 	c.pendingMembersLock.Unlock()
 
 	activeMembers = append(activeMembers, pendingMembers...)
@@ -102,12 +104,16 @@ func (c *Client) activatePendingMembers() {
 		for i := 0; i < len(pendingMembers); i++ {
 			tcpAddr := pendingMembers[i].GetTCPAddr()
 			msg.Target = tcpAddr.String()
+			msg.Origin = c.GetId()
 			err := c.messenger.Send(msg)
 			if err == nil {
 				log.Println("[DEBUG] Activate message sent to: ", tcpAddr.String())
 			}
 		}
 	}
+	// TODO: Race condition here where is node 0 is just activated and a
+	// node joined between the time this pending list is built, but before
+	// before the new node 0 is activated, the node would essentially be lost.
 
 	// Update the active members on the local node
 	log.Println("[DEBUG] Total active nodes: " + strconv.Itoa(len(activeMembers)))

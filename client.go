@@ -340,6 +340,19 @@ func (c *Client) NotifyJoin(n *memberlist.Node) {
 		return
 	}
 
+	// Can't accurately track pending if not active
+	if !c.IsActive() {
+		return
+	}
+
+	c.ActiveMembersLock.Lock()
+	defer c.ActiveMembersLock.Unlock()
+	_, alreadyActive := c.ActiveMembers[n.Name]
+	if alreadyActive {
+		// Don't need to do anything
+		return
+	}
+
 	c.pendingMembersLock.Lock()
 	c.pendingMembers[n.Name] = new_node
 	c.pendingMembersLock.Unlock()
