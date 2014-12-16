@@ -88,10 +88,10 @@ func TestClient_IsActive(t *testing.T) {
 }
 
 func TestClient_Barrier(t *testing.T) {
-	timer := time.AfterFunc(1000*time.Millisecond, func() {
-		panic("Hung during barrier test!")
-	})
-	defer timer.Stop()
+	// timer := time.AfterFunc(1000*time.Millisecond, func() {
+	// 	panic("Hung during barrier test!")
+	// })
+	// defer timer.Stop()
 
 	c, _ := getMessagingClient(t)
 
@@ -100,6 +100,8 @@ func TestClient_Barrier(t *testing.T) {
 
 	// Test with multiple active nodes
 	activeNodes := []Node{GetNode(t), GetNode(t), c.node}
+	activeNodes[0].Name = "Node0"
+	activeNodes[1].Name = "Node1"
 	c.updateActiveMemberList(activeNodes)
 
 	blocked := false
@@ -112,6 +114,7 @@ func TestClient_Barrier(t *testing.T) {
 	}()
 
 	c.HandleMessage(GetBarrierMessage(t, activeNodes[0].Name))
+	c.HandleMessage(GetBarrierMessage(t, activeNodes[2].Name))
 	blocked = true
 	c.HandleMessage(GetBarrierMessage(t, activeNodes[1].Name))
 

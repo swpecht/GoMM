@@ -29,7 +29,7 @@ func (f *ClientFactory) initializeData(c *Client) error {
 	// Initialize variables
 	c.ActiveMembers = make(map[string]Node)
 	c.pendingMembers = make(map[string]Node)
-	c.barrierChannel = make(chan string)
+	c.barrierChannel = make(chan string, 10)
 	c.BroadcastChannel = make(chan Message, 10)
 
 	var config *memberlist.Config = memberlist.DefaultLocalConfig()
