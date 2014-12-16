@@ -33,7 +33,7 @@ func TestInteg_ChannelMessenger(t *testing.T) {
 
 }
 
-func testClients(t *testing.T, clients []Client) {
+func testClients(t *testing.T, clients []*Client) {
 	assert := assert.New(t)
 
 	for i := range clients {

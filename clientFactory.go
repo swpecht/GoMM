@@ -16,13 +16,13 @@ type ClientFactory struct {
 	num_created int
 }
 
-func (f *ClientFactory) NewClient() (c Client) {
-	c = Client{}
-	f.initializeData(&c)
+func (f *ClientFactory) NewClient() *Client {
+	c := &Client{}
+	f.initializeData(c)
 
 	f.num_created += 1
 
-	return
+	return c
 }
 
 func (f *ClientFactory) initializeData(c *Client) error {
@@ -71,11 +71,11 @@ func (f *ClientFactory) getNonLoopBackAddress() (net.IP, error) {
 }
 
 // Get Clients for the test
-func GetLocalClients(num int) []Client {
+func GetLocalClients(num int) []*Client {
 	factory := ClientFactory{}
 
 	// Create clients
-	clients := make([]Client, num)
+	clients := make([]*Client, num)
 	ClientNames := make([]string, num)
 	for i := 0; i < num; i++ {
 		clients[i] = factory.NewClient()
@@ -98,10 +98,10 @@ func GetLocalClients(num int) []Client {
 }
 
 // Get TCP clients
-func GetTCPClients(num int) ([]Client, error) {
+func GetTCPClients(num int) ([]*Client, error) {
 	factory := ClientFactory{}
 
-	clients := make([]Client, num)
+	clients := make([]*Client, num)
 	for i := 0; i < num; i++ {
 		clients[i] = factory.NewClient()
 		tcpAddr := clients[i].node.GetTCPAddr()

@@ -21,14 +21,14 @@ type Client struct {
 	node               Node            // Used for TCP communications
 
 	messenger Messenger
-	listener  Listener
+	listener  *Listener
 
 	barrierChannel chan string // The channel that handles barrier message, will be the name of the node that sent the barrier
 	// Channel for recieve broadcast messages
 	BroadcastChannel chan Message
 }
 
-func (c Client) NumMembers() int {
+func (c *Client) NumMembers() int {
 	return c.memberTracker.NumMembers()
 }
 
@@ -54,7 +54,7 @@ func (c *Client) JoinAddr() string {
 	return c.node.GetMemberlistStringAddr()
 }
 
-func (c Client) HandleMessage(msg Message) {
+func (c *Client) HandleMessage(msg Message) {
 	if msg.Type == activateMsg || msg.Type == broadcastMsg || msg.Type == barrierMsg {
 		c.continueMessageBroadcast(msg) // continues to broadcast the message
 	}
@@ -321,7 +321,7 @@ func (c *Client) broadCastMsg(msg Message) {
 	c.sendMsg(msg, 0)
 }
 
-func (c Client) NotifyJoin(n *memberlist.Node) {
+func (c *Client) NotifyJoin(n *memberlist.Node) {
 	new_node := Node{
 		Name: n.Name,
 		Addr: n.Addr,
@@ -341,7 +341,7 @@ func (c Client) NotifyJoin(n *memberlist.Node) {
 	c.pendingMembersLock.Unlock()
 }
 
-func (c Client) NotifyLeave(n *memberlist.Node) {
+func (c *Client) NotifyLeave(n *memberlist.Node) {
 	log.Println("[DEBUG]", c.Name, "sees", n.Name, "left")
 	c.ActiveMembersLock.Lock()
 	// Delete the node from active members
@@ -354,6 +354,6 @@ func (c Client) NotifyLeave(n *memberlist.Node) {
 	c.pendingMembersLock.Unlock()
 }
 
-func (c Client) NotifyUpdate(n *memberlist.Node) {
+func (c *Client) NotifyUpdate(n *memberlist.Node) {
 
 }

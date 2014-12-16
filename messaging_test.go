@@ -115,7 +115,7 @@ func TestMessaging_ChannelMessenger(t *testing.T) {
 	go messenger1.Recv(recvrChannel)
 	err := messenger0.Send(msgTo1)
 	if err != nil {
-		t.Errorf("Failed to send message", err.Error())
+		t.Errorf("Failed to send message %s", err.Error())
 	}
 	msgRecvd := <-recvrChannel
 

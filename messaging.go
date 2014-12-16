@@ -92,8 +92,8 @@ type MessageHandler interface {
 	HandleMessage(msg Message)
 }
 
-func NewListener(msgHandler MessageHandler) Listener {
-	return Listener{
+func NewListener(msgHandler MessageHandler) *Listener {
+	return &Listener{
 		isRunning: false,
 		stop:      make(chan bool),
 		handler:   msgHandler,
@@ -122,7 +122,6 @@ func (l *Listener) Listen(messenger Messenger) error {
 			return nil
 		}
 	}
-	return nil
 }
 
 // Waits for a message ot be recieved or the stop signal to be sent
@@ -205,7 +204,7 @@ func (messenger *TCPMessenger) getListener() (*net.TCPListener, error) {
 
 	listener, err := net.ListenTCP("tcp", messenger.listenAddr)
 	if err != nil {
-		log.Println("[ERROR] Error starting listener %s", err.Error())
+		log.Println("[ERROR] Error starting listener", err.Error())
 		return nil, err
 	}
 	log.Printf("[DEBUG] Listener started for %s", messenger.listenAddr.String())
