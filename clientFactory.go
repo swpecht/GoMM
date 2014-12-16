@@ -108,7 +108,7 @@ func GetTCPClients(num int) ([]Client, error) {
 		messenger, err := GetTCPMessenger(tcpAddr.String(), tcpAddr.String())
 		for err != nil {
 			// If already in use, try a different port
-			log.Printf("[ERROR] Failed to create client: %s. Incrementing port and trying again", tcpAddr.String())
+			log.Printf("[DEBUG] Failed to create client: %s. Incrementing port and trying again", tcpAddr.String())
 			clients[i].node.Port += 1
 			clients[i].node.MemberlistPort += 1
 			var config *memberlist.Config = memberlist.DefaultLocalConfig()
