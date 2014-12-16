@@ -245,19 +245,13 @@ func (c *Client) Barrier() {
 	//Get messages from channel
 
 	responded := make(map[string]bool)
-PollingLoop:
-	for {
-		select {
-		case name := <-c.barrierChannel:
-			responded[name] = true
-			log.Println("[DEBUG]", c.Name, "Received barrier from", name, len(responded), "of", c.NumActiveMembers())
-		default:
-			if len(responded) == c.NumActiveMembers() {
-				log.Println("[DEBUG] Barrier completed by", c.Name)
-				break PollingLoop // everyone is at the barrier
-			}
-		}
+
+	for len(responded) != c.NumActiveMembers() {
+		name := <-c.barrierChannel
+		responded[name] = true
+		// log.Println("[DEBUG]", c.Name, "Received barrier from", name, len(responded), "of", c.NumActiveMembers())
 	}
+	log.Println("[DEBUG] Barrier completed by", c.Name)
 }
 
 // Send message to all nodes
