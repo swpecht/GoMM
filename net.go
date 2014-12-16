@@ -97,14 +97,15 @@ func (c *Client) activatePendingMembers() {
 
 	msg, _ := createActivateMsg(activeMembers)
 
-	// TODO implement some logic here so everyone does send to the
-	// new members
-	for i := 0; i < len(pendingMembers); i++ {
-		tcpAddr := pendingMembers[i].GetTCPAddr()
-		msg.Target = tcpAddr.String()
-		err := c.messenger.Send(msg)
-		if err == nil {
-			log.Println("[DEBUG] Activate message sent to: ", tcpAddr.String())
+	// Only send the activate message if node 0
+	if c.GetId() == 0 {
+		for i := 0; i < len(pendingMembers); i++ {
+			tcpAddr := pendingMembers[i].GetTCPAddr()
+			msg.Target = tcpAddr.String()
+			err := c.messenger.Send(msg)
+			if err == nil {
+				log.Println("[DEBUG] Activate message sent to: ", tcpAddr.String())
+			}
 		}
 	}
 
@@ -156,7 +157,7 @@ func isSelfAddr(rAddr string, memberlistPort int) bool {
 		if ip4 == nil {
 			continue
 		}
-
+		log.Println("[DEBUG]", ip4.String(), tcpAddr.IP.String())
 		if ip4.String() == tcpAddr.IP.String() {
 			return true
 		}
