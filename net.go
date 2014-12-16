@@ -151,12 +151,12 @@ func isSelfAddr(rAddr string, memberlistPort int) bool {
 		if !ok {
 			continue
 		}
-		ip4 := ipnet.IP.To4()
 
+		ip4 := ipnet.IP.To4()
 		if ip4 == nil {
 			continue
 		}
-		log.Println("[DEBUG]", tcpAddr.IP.String(), ip4.String())
+
 		if ip4.String() == tcpAddr.IP.String() {
 			return true
 		}
