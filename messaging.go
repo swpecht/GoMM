@@ -245,13 +245,13 @@ func (messenger *TCPMessenger) Recv(channel chan Message) error {
 		return err
 	}
 
-	log.Printf("[DEBUG] Awaiting connection on %s", messenger.listenAddr.String())
+	// log.Printf("[DEBUG] Awaiting connection on %s", messenger.listenAddr.String())
 	conn, err := listener.AcceptTCP()
 	if err != nil {
 		return err
 	}
 
-	log.Printf("[DEBUG] Connection received on %s from %s", messenger.listenAddr.String(), conn.RemoteAddr().String())
+	// log.Printf("[DEBUG] Connection received on %s from %s", messenger.listenAddr.String(), conn.RemoteAddr().String())
 	msg, err := messenger.recvMessage(conn)
 	if err != nil {
 		return err
@@ -284,7 +284,7 @@ func (messenger *TCPMessenger) recvMessage(conn *net.TCPConn) (Message, error) {
 		log.Println("[ERROR] Failed to read message")
 		return Message{}, err
 	}
-	log.Printf("[DEBUG] Message recieved: %s", b)
+	// log.Printf("[DEBUG] Message recieved: %s", b)
 	msg, err := messenger.Decode(b)
 	return msg, err
 }
@@ -296,7 +296,7 @@ func (messenger *TCPMessenger) sendMessage(conn *net.TCPConn, msg Message) error
 	if err != nil {
 		return err
 	}
-	log.Println("[DEBUG] Sending message: " + msgString)
+	// log.Println("[DEBUG] Sending message: " + msgString)
 	io.Copy(conn, bytes.NewBufferString(msgString))
 	//This is probably timing out, may beed to use a thread ppol
 	//_, err = conn.Write([]byte(msgString))
